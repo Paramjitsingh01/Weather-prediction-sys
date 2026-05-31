@@ -2,12 +2,9 @@ import streamlit as st
 import requests
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
-import json
-import time
+from datetime import datetime
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -25,17 +22,16 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
 
 :root {
-    --bg: #0a0e1a;
-    --card: #111827;
-    --card2: #1a2235;
-    --accent: #38bdf8;
+    --bg:      #0a0e1a;
+    --card:    #111827;
+    --card2:   #1a2235;
+    --accent:  #38bdf8;
     --accent2: #f59e0b;
     --accent3: #34d399;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --border: #1e2d45;
-    --danger: #f87171;
-    --rain: #60a5fa;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --border:  #1e2d45;
+    --rain:    #60a5fa;
 }
 
 html, body, [class*="css"] {
@@ -43,41 +39,57 @@ html, body, [class*="css"] {
     background-color: var(--bg) !important;
     color: var(--text) !important;
 }
-
 .stApp { background: var(--bg) !important; }
 
-/* ── Sidebar ── */
+/* Sidebar */
 [data-testid="stSidebar"] {
-    background: var(--card) !important;
+    background: #0d1424 !important;
     border-right: 1px solid var(--border);
 }
 [data-testid="stSidebar"] * { color: var(--text) !important; }
-
-/* ── Inputs ── */
-.stTextInput input, .stSelectbox select, .stNumberInput input {
-    background: var(--card2) !important;
-    color: var(--text) !important;
+[data-testid="stSidebar"] .stSelectbox > div > div,
+[data-testid="stSidebar"] .stTextInput > div > div > input {
+    background: #1a2235 !important;
     border: 1px solid var(--border) !important;
-    border-radius: 8px !important;
+    border-radius: 10px !important;
+    color: var(--text) !important;
     font-family: 'Space Mono', monospace !important;
 }
-.stTextInput input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(56,189,248,0.2) !important; }
+[data-testid="stSidebar"] .stSelectbox > div > div:focus-within,
+[data-testid="stSidebar"] .stTextInput > div > div > input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(56,189,248,0.15) !important;
+}
 
-/* ── Buttons ── */
-.stButton > button {
+/* Sidebar button — matches screenshot cyan pill */
+[data-testid="stSidebar"] .stButton > button {
     background: linear-gradient(135deg, #0ea5e9, #38bdf8) !important;
     color: #0a0e1a !important;
     font-weight: 700 !important;
     border: none !important;
-    border-radius: 10px !important;
-    padding: 0.6rem 1.4rem !important;
+    border-radius: 12px !important;
+    padding: 0.65rem 1.4rem !important;
     font-family: 'Syne', sans-serif !important;
-    letter-spacing: 0.5px !important;
+    font-size: 1rem !important;
+    width: 100% !important;
+    letter-spacing: 0.4px !important;
     transition: all 0.2s !important;
 }
-.stButton > button:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(56,189,248,0.35) !important; }
+[data-testid="stSidebar"] .stButton > button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(56,189,248,0.35) !important;
+}
 
-/* ── Cards ── */
+/* Main buttons */
+.stButton > button {
+    background: linear-gradient(135deg, #0ea5e9, #38bdf8) !important;
+    color: #0a0e1a !important; font-weight: 700 !important;
+    border: none !important; border-radius: 10px !important;
+    font-family: 'Syne', sans-serif !important;
+    transition: all 0.2s !important;
+}
+
+/* Cards */
 .weather-card {
     background: var(--card);
     border: 1px solid var(--border);
@@ -98,14 +110,14 @@ html, body, [class*="css"] {
     border-radius: 12px;
     padding: 1.2rem 1rem;
     text-align: center;
-    transition: transform 0.2s;
+    transition: transform 0.2s, border-color 0.2s;
 }
 .metric-card:hover { transform: translateY(-3px); border-color: var(--accent); }
 .metric-value { font-size: 2rem; font-weight: 800; color: var(--accent); line-height: 1; }
-.metric-label { font-size: 0.72rem; color: var(--muted); margin-top: 0.4rem; text-transform: uppercase; letter-spacing: 1px; }
-.metric-unit { font-size: 0.85rem; color: var(--muted); }
+.metric-label { font-size: 0.7rem; color: var(--muted); margin-top: 0.4rem; text-transform: uppercase; letter-spacing: 1px; }
+.metric-unit  { font-size: 0.82rem; color: var(--muted); }
 
-/* ── Forecast Cards ── */
+/* Forecast cards */
 .forecast-card {
     background: var(--card2);
     border: 1px solid var(--border);
@@ -113,42 +125,14 @@ html, body, [class*="css"] {
     padding: 1rem 0.8rem;
     text-align: center;
 }
-.forecast-day { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.forecast-day  { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
 .forecast-icon { font-size: 1.8rem; margin: 0.4rem 0; }
-.forecast-temp { font-size: 1rem; font-weight: 700; }
-.forecast-high { color: var(--accent2); }
-.forecast-low { color: var(--rain); }
+.forecast-high { color: var(--accent2); font-weight: 700; }
+.forecast-low  { color: var(--rain); }
 
-/* ── Prediction Badge ── */
-.pred-badge {
-    display: inline-block;
-    padding: 0.3rem 0.9rem;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 700;
-    margin: 0.2rem;
-}
-.pred-rain { background: rgba(96,165,250,0.15); color: var(--rain); border: 1px solid rgba(96,165,250,0.3); }
-.pred-sun { background: rgba(245,158,11,0.15); color: var(--accent2); border: 1px solid rgba(245,158,11,0.3); }
-.pred-cloud { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
-
-/* ── Header ── */
-.main-header {
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 2rem;
-    margin-bottom: 1.5rem;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-}
-.main-header h1 { font-size: 2.6rem; font-weight: 800; margin: 0; background: linear-gradient(135deg, #38bdf8, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.main-header p { color: var(--muted); margin: 0.4rem 0 0; font-family: 'Space Mono', monospace; font-size: 0.85rem; }
-
-/* ── Section Title ── */
+/* Section titles */
 .section-title {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 2px;
@@ -158,603 +142,410 @@ html, body, [class*="css"] {
     border-bottom: 1px solid var(--border);
 }
 
-/* ── Progress Bar ── */
-.stProgress > div > div { background: linear-gradient(90deg, #38bdf8, #34d399) !important; border-radius: 4px; }
+/* Header */
+.main-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+.main-header h1 {
+    font-size: 2.6rem; font-weight: 800; margin: 0;
+    background: linear-gradient(135deg, #38bdf8, #f59e0b);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.main-header p { color: var(--muted); margin: 0.4rem 0 0; font-family: 'Space Mono', monospace; font-size: 0.82rem; }
 
-/* ── Alerts ── */
-.stAlert { border-radius: 12px !important; }
+/* Prediction badges */
+.pred-badge { display: inline-block; padding: 0.3rem 0.9rem; border-radius: 20px; font-size: 0.82rem; font-weight: 700; }
+.pred-rain  { background: rgba(96,165,250,0.15); color: var(--rain);    border: 1px solid rgba(96,165,250,0.3); }
+.pred-sun   { background: rgba(245,158,11,0.15);  color: var(--accent2); border: 1px solid rgba(245,158,11,0.3); }
+.pred-cloud { background: rgba(100,116,139,0.2);  color: #94a3b8;        border: 1px solid rgba(100,116,139,0.3); }
 
-/* ── Wind Direction ── */
-.wind-compass {
-    width: 80px; height: 80px;
-    border: 2px solid var(--border);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem;
-    background: var(--card2);
-    margin: 0 auto;
+/* Sidebar label icons */
+.sidebar-label {
+    font-size: 0.85rem; font-weight: 700; color: var(--text);
+    margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.4rem;
 }
 
-/* ── Hide Streamlit Branding ── */
+/* Progress */
+.stProgress > div > div { background: linear-gradient(90deg, #38bdf8, #34d399) !important; border-radius: 4px; }
+
+/* Hide branding */
 #MainMenu { visibility: hidden; }
-footer { visibility: hidden; }
-header { visibility: hidden; }
+footer    { visibility: hidden; }
+header    { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
 # ─── Constants ─────────────────────────────────────────────────────────────────
-OPENWEATHER_BASE = "https://api.openweathermap.org/data/2.5"
-FORECAST_BASE    = "https://api.openweathermap.org/data/2.5/forecast"
+OW_BASE     = "https://api.openweathermap.org/data/2.5"
+WIND_DIRS   = [(0,22.5,"N↑"),(22.5,67.5,"NE↗"),(67.5,112.5,"E→"),(112.5,157.5,"SE↘"),
+               (157.5,202.5,"S↓"),(202.5,247.5,"SW↙"),(247.5,292.5,"W←"),(292.5,337.5,"NW↖"),(337.5,360,"N↑")]
+WX_ICONS    = {"Clear":"☀️","Clouds":"☁️","Rain":"🌧️","Drizzle":"🌦️",
+               "Thunderstorm":"⛈️","Snow":"❄️","Mist":"🌫️","Fog":"🌫️","Haze":"🌫️"}
+AQI_LABELS  = {1:"Good 🟢",2:"Fair 🟡",3:"Moderate 🟠",4:"Poor 🔴",5:"Very Poor 🟣"}
+AQI_COLORS  = {1:"#34d399",2:"#fbbf24",3:"#f97316",4:"#ef4444",5:"#8b5cf6"}
 
-WEATHER_ICONS = {
-    "Clear": "☀️", "Clouds": "☁️", "Rain": "🌧️",
-    "Drizzle": "🌦️", "Thunderstorm": "⛈️", "Snow": "❄️",
-    "Mist": "🌫️", "Fog": "🌫️", "Haze": "🌫️",
-    "Smoke": "💨", "Dust": "💨", "Sand": "💨",
-    "Ash": "🌋", "Squall": "🌬️", "Tornado": "🌪️"
-}
-
-WIND_DIRS = {
-    (0,   22.5): "N ↑",  (22.5,  67.5): "NE ↗", (67.5,  112.5): "E →",
-    (112.5,157.5): "SE ↘",(157.5,202.5): "S ↓", (202.5,247.5): "SW ↙",
-    (247.5,292.5): "W ←", (292.5,337.5): "NW ↖",(337.5,360): "N ↑"
-}
-
-# ─── Helpers ───────────────────────────────────────────────────────────────────
-def get_wind_dir(deg):
-    for (lo, hi), label in WIND_DIRS.items():
+def wind_dir(deg):
+    for lo, hi, label in WIND_DIRS:
         if lo <= deg < hi:
             return label
-    return "N ↑"
+    return "N↑"
 
-def weather_icon(condition):
-    return WEATHER_ICONS.get(condition, "🌤️")
+def wx_icon(main): return WX_ICONS.get(main, "🌤️")
 
-def get_aqi_label(aqi):
-    labels = {1:"Good 🟢", 2:"Fair 🟡", 3:"Moderate 🟠", 4:"Poor 🔴", 5:"Very Poor 🟣"}
-    return labels.get(aqi, "Unknown")
-
-# ─── API Calls ─────────────────────────────────────────────────────────────────
+# ─── API helpers ───────────────────────────────────────────────────────────────
 @st.cache_data(ttl=600)
-def fetch_current_weather(location, api_key, unit="metric"):
-    try:
-        # Try city name first
-        url = f"{OPENWEATHER_BASE}/weather?q={location}&appid={api_key}&units={unit}"
-        r = requests.get(url, timeout=10)
+def fetch_current(location, api_key, units):
+    for param in [f"q={location}", *([ f"lat={location.split(',')[0].strip()}&lon={location.split(',')[1].strip()}" ] if "," in location else [])]:
+        r = requests.get(f"{OW_BASE}/weather?{param}&appid={api_key}&units={units}", timeout=10)
         if r.status_code == 200:
             return r.json(), None
-        # Try lat,lon
-        if "," in location:
-            lat, lon = location.split(",")
-            url = f"{OPENWEATHER_BASE}/weather?lat={lat.strip()}&lon={lon.strip()}&appid={api_key}&units={unit}"
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                return r.json(), None
-        return None, r.json().get("message", "City not found")
-    except Exception as e:
-        return None, str(e)
+    return None, r.json().get("message","City not found")
 
 @st.cache_data(ttl=600)
-def fetch_forecast(location, api_key, unit="metric"):
-    try:
-        url = f"{FORECAST_BASE}?q={location}&appid={api_key}&units={unit}&cnt=40"
-        r = requests.get(url, timeout=10)
+def fetch_forecast(location, api_key, units):
+    for param in [f"q={location}", *([ f"lat={location.split(',')[0].strip()}&lon={location.split(',')[1].strip()}" ] if "," in location else [])]:
+        r = requests.get(f"{OW_BASE}/forecast?{param}&appid={api_key}&units={units}&cnt=40", timeout=10)
         if r.status_code == 200:
             return r.json(), None
-        if "," in location:
-            lat, lon = location.split(",")
-            url = f"{FORECAST_BASE}?lat={lat.strip()}&lon={lon.strip()}&appid={api_key}&units={unit}&cnt=40"
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                return r.json(), None
-        return None, r.json().get("message", "Forecast unavailable")
-    except Exception as e:
-        return None, str(e)
+    return None, r.json().get("message","Forecast unavailable")
 
 @st.cache_data(ttl=3600)
-def fetch_air_quality(lat, lon, api_key):
+def fetch_aqi(lat, lon, api_key):
     try:
-        url = f"{OPENWEATHER_BASE}/air_pollution?lat={lat}&lon={lon}&appid={api_key}"
-        r = requests.get(url, timeout=10)
+        r = requests.get(f"{OW_BASE}/air_pollution?lat={lat}&lon={lon}&appid={api_key}", timeout=10)
         if r.status_code == 200:
             return r.json()
-    except:
-        pass
+    except: pass
     return None
 
-# ─── ML Model ──────────────────────────────────────────────────────────────────
-def generate_synthetic_history(current_data, n=500):
-    """Generate plausible historical data around current conditions for demo ML."""
+# ─── ML ────────────────────────────────────────────────────────────────────────
+def build_history(cur):
     np.random.seed(42)
-    temp    = current_data.get("main", {}).get("temp", 25)
-    humidity= current_data.get("main", {}).get("humidity", 60)
-    pressure= current_data.get("main", {}).get("pressure", 1013)
-    wind    = current_data.get("wind", {}).get("speed", 5)
-
-    temps     = np.random.normal(temp, 6, n)
-    humids    = np.clip(np.random.normal(humidity, 12, n), 10, 100)
-    pressures = np.random.normal(pressure, 8, n)
-    winds     = np.clip(np.random.exponential(wind + 1, n), 0, 50)
-    clouds    = np.random.randint(0, 101, n)
-    hours     = np.random.randint(0, 24, n)
-    months    = np.random.randint(1, 13, n)
-
-    # Rain probability heuristic
-    rain_prob = (humids > 75).astype(float) * 0.5 + (clouds > 70).astype(float) * 0.3 + \
-                (pressures < 1005).astype(float) * 0.2
-    rain_next = (rain_prob + np.random.normal(0, 0.15, n) > 0.45).astype(int)
-
-    temp_next = temps + np.random.normal(0, 3, n)
-    humidity_next = np.clip(humids + np.random.normal(0, 5, n), 10, 100)
-
-    conditions = []
-    for i in range(n):
-        if rain_next[i] == 1:
-            conditions.append("Rain")
-        elif clouds[i] > 70:
-            conditions.append("Clouds")
-        else:
-            conditions.append("Clear")
-
-    return pd.DataFrame({
-        "temp": temps, "humidity": humids, "pressure": pressures,
-        "wind_speed": winds, "clouds": clouds, "hour": hours, "month": months,
-        "temp_next": temp_next, "humidity_next": humidity_next,
-        "rain_next": rain_next, "condition_next": conditions
-    })
+    n   = 600
+    t   = cur["main"]["temp"];    h = cur["main"]["humidity"]
+    p   = cur["main"]["pressure"]; w = cur["wind"]["speed"]
+    T   = np.random.normal(t, 6, n)
+    H   = np.clip(np.random.normal(h, 12, n), 10, 100)
+    P   = np.random.normal(p, 8, n)
+    W   = np.clip(np.random.exponential(w+1, n), 0, 50)
+    C   = np.random.randint(0, 101, n)
+    Hr  = np.random.randint(0, 24, n)
+    Mo  = np.random.randint(1, 13, n)
+    rain_p = (H>75)*0.5 + (C>70)*0.3 + (P<1005)*0.2
+    rain   = (rain_p + np.random.normal(0,.15,n) > 0.45).astype(int)
+    cond   = ["Rain" if r else ("Clouds" if c>70 else "Clear") for r,c in zip(rain,C)]
+    return pd.DataFrame({"temp":T,"humidity":H,"pressure":P,"wind":W,"clouds":C,
+                         "hour":Hr,"month":Mo,"t_next":T+np.random.normal(0,3,n),
+                         "h_next":np.clip(H+np.random.normal(0,5,n),10,100),
+                         "rain":rain,"cond":cond})
 
 @st.cache_resource
-def train_models(current_data):
-    df = generate_synthetic_history(current_data)
-    features = ["temp","humidity","pressure","wind_speed","clouds","hour","month"]
-    X = df[features]
-
-    # Temp predictor
-    rf_temp = RandomForestRegressor(n_estimators=120, max_depth=8, random_state=42)
-    rf_temp.fit(X, df["temp_next"])
-
-    # Humidity predictor
-    rf_hum = RandomForestRegressor(n_estimators=80, max_depth=6, random_state=42)
-    rf_hum.fit(X, df["humidity_next"])
-
-    # Rain classifier
-    rf_rain = RandomForestClassifier(n_estimators=120, max_depth=8, random_state=42)
-    rf_rain.fit(X, df["rain_next"])
-
-    # Condition classifier
+def train(cur):
+    df = build_history(cur)
+    F  = ["temp","humidity","pressure","wind","clouds","hour","month"]
+    X  = df[F]
     le = LabelEncoder()
-    y_cond = le.fit_transform(df["condition_next"])
-    rf_cond = RandomForestClassifier(n_estimators=100, max_depth=8, random_state=42)
-    rf_cond.fit(X, y_cond)
+    yc = le.fit_transform(df["cond"])
+    rt = RandomForestRegressor(120,max_depth=8,random_state=42).fit(X,df["t_next"])
+    rh = RandomForestRegressor(80, max_depth=6,random_state=42).fit(X,df["h_next"])
+    rr = RandomForestClassifier(120,max_depth=8,random_state=42).fit(X,df["rain"])
+    rc = RandomForestClassifier(100,max_depth=8,random_state=42).fit(X,yc)
+    return rt, rh, rr, rc, le, F
 
-    return rf_temp, rf_hum, rf_rain, rf_cond, le, features
-
-def make_predictions(current_data, forecast_data):
-    rf_temp, rf_hum, rf_rain, rf_cond, le, features = train_models(current_data)
-
-    main   = current_data.get("main", {})
-    wind   = current_data.get("wind", {})
-    clouds = current_data.get("clouds", {}).get("all", 50)
-    now    = datetime.now()
-
-    X_now = pd.DataFrame([[
-        main.get("temp", 25),
-        main.get("humidity", 60),
-        main.get("pressure", 1013),
-        wind.get("speed", 5),
-        clouds,
-        now.hour,
-        now.month
-    ]], columns=features)
-
-    pred_temp  = rf_temp.predict(X_now)[0]
-    pred_hum   = rf_hum.predict(X_now)[0]
-    rain_prob  = rf_rain.predict_proba(X_now)[0][1] * 100
-    cond_idx   = rf_cond.predict(X_now)[0]
-    pred_cond  = le.inverse_transform([cond_idx])[0]
-
-    # 24h predictions using forecast data
-    hourly_preds = []
-    if forecast_data:
-        for item in forecast_data.get("list", [])[:8]:
-            fi = item.get("main", {})
-            fw = item.get("wind", {})
-            fc = item.get("clouds", {}).get("all", 50)
-            dt = datetime.fromtimestamp(item["dt"])
-            Xi = pd.DataFrame([[
-                fi.get("temp", 25), fi.get("humidity", 60), fi.get("pressure", 1013),
-                fw.get("speed", 5), fc, dt.hour, dt.month
-            ]], columns=features)
-            hourly_preds.append({
-                "time": dt.strftime("%I %p"),
-                "temp": rf_temp.predict(Xi)[0],
-                "humidity": rf_hum.predict(Xi)[0],
-                "rain_prob": rf_rain.predict_proba(Xi)[0][1] * 100,
-                "condition": le.inverse_transform([rf_cond.predict(Xi)[0]])[0]
-            })
-
+def predict(cur, fcast):
+    rt, rh, rr, rc, le, F = train(cur)
+    m = cur["main"]; w = cur["wind"]; now = datetime.now()
+    X0 = pd.DataFrame([[m["temp"],m["humidity"],m["pressure"],w["speed"],
+                        cur["clouds"]["all"],now.hour,now.month]], columns=F)
+    hourly = []
+    for item in (fcast or {}).get("list",[])[:8]:
+        fi = item["main"]; fw = item["wind"]; fc = item["clouds"]["all"]
+        dt = datetime.fromtimestamp(item["dt"])
+        Xi = pd.DataFrame([[fi["temp"],fi["humidity"],fi["pressure"],
+                            fw["speed"],fc,dt.hour,dt.month]], columns=F)
+        hourly.append({
+            "time": dt.strftime("%I %p"),
+            "temp": rt.predict(Xi)[0],
+            "humidity": rh.predict(Xi)[0],
+            "rain_prob": rr.predict_proba(Xi)[0][1]*100,
+            "condition": le.inverse_transform([rc.predict(Xi)[0]])[0]
+        })
     return {
-        "temp_next": pred_temp,
-        "humidity_next": pred_hum,
-        "rain_probability": rain_prob,
-        "condition_next": pred_cond,
-        "hourly": hourly_preds
+        "temp":      rt.predict(X0)[0],
+        "humidity":  rh.predict(X0)[0],
+        "rain_prob": rr.predict_proba(X0)[0][1]*100,
+        "condition": le.inverse_transform([rc.predict(X0)[0]])[0],
+        "hourly":    hourly
     }
 
-# ─── UI Components ─────────────────────────────────────────────────────────────
-def render_header(city_name, country):
-    st.markdown(f"""
-    <div class="main-header">
-        <h1>🌤️ WeatherSense AI</h1>
-        <p>📍 {city_name}, {country} &nbsp;·&nbsp; ML-Enhanced Forecast &nbsp;·&nbsp; {datetime.now().strftime("%A, %d %B %Y %H:%M")}</p>
-    </div>
-    """, unsafe_allow_html=True)
+# ─── Render helpers ────────────────────────────────────────────────────────────
+def section(title):
+    st.markdown(f'<div class="section-title">{title}</div>', unsafe_allow_html=True)
 
-def render_current_metrics(data, unit_sym):
-    main   = data.get("main", {})
-    wind   = data.get("wind", {})
-    clouds = data.get("clouds", {}).get("all", 0)
-    vis    = data.get("visibility", 10000)
-    cond   = data.get("weather", [{}])[0]
-
-    temp      = main.get("temp", "--")
-    feels     = main.get("feels_like", "--")
-    humidity  = main.get("humidity", "--")
-    pressure  = main.get("pressure", "--")
-    wind_spd  = wind.get("speed", "--")
-    wind_deg  = wind.get("deg", 0)
-    wind_dir  = get_wind_dir(wind_deg)
-    desc      = cond.get("description", "").title()
-    icon      = weather_icon(cond.get("main", ""))
-
-    cols = st.columns([2, 1, 1, 1, 1, 1])
+def render_current(data, usym):
+    m = data["main"]; w = data["wind"]; cond = data["weather"][0]
+    vis   = round(data.get("visibility",10000)/1000,1)
+    cols  = st.columns([2,1,1,1,1,1])
     with cols[0]:
         st.markdown(f"""
-        <div class="weather-card" style="text-align:center;">
-            <div style="font-size:5rem;line-height:1">{icon}</div>
-            <div style="font-size:3.2rem;font-weight:800;color:var(--accent);line-height:1.1">{temp:.1f}°{unit_sym}</div>
-            <div style="color:var(--muted);margin-top:0.3rem;font-family:'Space Mono',monospace;font-size:0.85rem">{desc}</div>
-            <div style="color:var(--muted);font-size:0.78rem;margin-top:0.3rem">Feels like {feels:.1f}°{unit_sym}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        <div class="weather-card" style="text-align:center">
+            <div style="font-size:5rem;line-height:1">{wx_icon(cond["main"])}</div>
+            <div style="font-size:3.2rem;font-weight:800;color:var(--accent);line-height:1.1">{m["temp"]:.1f}°{usym}</div>
+            <div style="color:var(--muted);margin-top:.3rem;font-family:'Space Mono',monospace;font-size:.85rem">{cond["description"].title()}</div>
+            <div style="color:var(--muted);font-size:.78rem;margin-top:.3rem">Feels like {m["feels_like"]:.1f}°{usym}</div>
+        </div>""", unsafe_allow_html=True)
+    metrics = [
+        ("💧","Humidity",  m["humidity"],     "%"),
+        ("💨","Wind",      f'{w["speed"]} m/s', wind_dir(w.get("deg",0))),
+        ("🌡️","Pressure",  m["pressure"],     "hPa"),
+        ("☁️","Cloud Cover",data["clouds"]["all"],"%"),
+        ("👁️","Visibility",vis,               "km"),
+    ]
+    for col,(icon,label,val,unit) in zip(cols[1:],metrics):
+        with col:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div style="font-size:1.6rem">{icon}</div>
+                <div class="metric-value" style="font-size:1.5rem">{val}</div>
+                <div class="metric-unit">{unit}</div>
+                <div class="metric-label">{label}</div>
+            </div>""", unsafe_allow_html=True)
 
-    with cols[1]:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div style="font-size:1.6rem">💧</div>
-            <div class="metric-value">{humidity}</div>
-            <div class="metric-unit">%</div>
-            <div class="metric-label">Humidity</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with cols[2]:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div style="font-size:1.6rem">💨</div>
-            <div class="metric-value" style="font-size:1.5rem">{wind_spd}</div>
-            <div class="metric-unit">m/s · {wind_dir}</div>
-            <div class="metric-label">Wind</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with cols[3]:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div style="font-size:1.6rem">🌡️</div>
-            <div class="metric-value" style="font-size:1.5rem">{pressure}</div>
-            <div class="metric-unit">hPa</div>
-            <div class="metric-label">Pressure</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with cols[4]:
-        st.markdown(f"""
-        <div class="metric-card">
-            <div style="font-size:1.6rem">☁️</div>
-            <div class="metric-value">{clouds}</div>
-            <div class="metric-unit">%</div>
-            <div class="metric-label">Cloud Cover</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with cols[5]:
-        vis_km = round(vis / 1000, 1) if isinstance(vis, (int, float)) else "--"
-        st.markdown(f"""
-        <div class="metric-card">
-            <div style="font-size:1.6rem">👁️</div>
-            <div class="metric-value" style="font-size:1.5rem">{vis_km}</div>
-            <div class="metric-unit">km</div>
-            <div class="metric-label">Visibility</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-def render_ml_predictions(preds, unit_sym):
-    st.markdown('<div class="section-title">🤖 ML Predictions (Next 3 Hours)</div>', unsafe_allow_html=True)
-
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        cond_icon = weather_icon(preds["condition_next"])
-        badge_cls = "pred-rain" if preds["condition_next"] == "Rain" else \
-                    ("pred-cloud" if preds["condition_next"] == "Clouds" else "pred-sun")
-        st.markdown(f"""
-        <div class="weather-card" style="text-align:center;">
-            <div style="font-size:2rem">{cond_icon}</div>
-            <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Predicted Condition</div>
-            <div class="pred-badge {badge_cls}" style="margin-top:0.5rem">{preds["condition_next"]}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with c2:
-        delta = preds["temp_next"] - 0  # placeholder
-        st.markdown(f"""
-        <div class="weather-card" style="text-align:center;">
+def render_ml(p, usym):
+    section("🤖 ML Predictions — Next 3 Hours")
+    c1,c2,c3,c4 = st.columns(4)
+    badge = "pred-rain" if p["condition"]=="Rain" else ("pred-cloud" if p["condition"]=="Clouds" else "pred-sun")
+    for col, html in zip([c1,c2,c3,c4],[
+        f"""<div class="weather-card" style="text-align:center">
+            <div style="font-size:2rem">{wx_icon(p["condition"])}</div>
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Predicted Condition</div>
+            <div class="pred-badge {badge}" style="margin-top:.5rem">{p["condition"]}</div></div>""",
+        f"""<div class="weather-card" style="text-align:center">
             <div style="font-size:2rem">🌡️</div>
-            <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Temperature Forecast</div>
-            <div style="font-size:2rem;font-weight:800;color:var(--accent2);margin-top:0.3rem">{preds["temp_next"]:.1f}°{unit_sym}</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with c3:
-        rain = preds["rain_probability"]
-        rain_color = "var(--rain)" if rain > 60 else ("var(--accent2)" if rain > 30 else "var(--accent3)")
-        st.markdown(f"""
-        <div class="weather-card" style="text-align:center;">
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Temperature Forecast</div>
+            <div style="font-size:2rem;font-weight:800;color:var(--accent2);margin-top:.3rem">{p["temp"]:.1f}°{usym}</div></div>""",
+        f"""<div class="weather-card" style="text-align:center">
             <div style="font-size:2rem">🌧️</div>
-            <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Rain Probability</div>
-            <div style="font-size:2rem;font-weight:800;color:{rain_color};margin-top:0.3rem">{rain:.0f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
-        st.progress(int(rain))
-    with c4:
-        st.markdown(f"""
-        <div class="weather-card" style="text-align:center;">
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Rain Probability</div>
+            <div style="font-size:2rem;font-weight:800;color:{'#60a5fa' if p['rain_prob']>60 else ('#f59e0b' if p['rain_prob']>30 else '#34d399')};margin-top:.3rem">{p["rain_prob"]:.0f}%</div></div>""",
+        f"""<div class="weather-card" style="text-align:center">
             <div style="font-size:2rem">💧</div>
-            <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Humidity Forecast</div>
-            <div style="font-size:2rem;font-weight:800;color:var(--rain);margin-top:0.3rem">{preds["humidity_next"]:.0f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Humidity Forecast</div>
+            <div style="font-size:2rem;font-weight:800;color:var(--rain);margin-top:.3rem">{p["humidity"]:.0f}%</div></div>"""
+    ]):
+        with col: st.markdown(html, unsafe_allow_html=True)
+    st.progress(int(p["rain_prob"]))
 
-def render_hourly_forecast(preds, unit_sym):
-    if not preds.get("hourly"):
-        return
-    st.markdown('<div class="section-title">⏱️ 24-Hour ML Forecast</div>', unsafe_allow_html=True)
-    cols = st.columns(len(preds["hourly"]))
-    for i, h in enumerate(preds["hourly"]):
-        with cols[i]:
-            icon = weather_icon(h["condition"])
-            rain_c = "#60a5fa" if h["rain_prob"] > 50 else "#64748b"
+def render_hourly(hourly):
+    if not hourly: return
+    section("⏱️ 24-Hour ML Forecast")
+    cols = st.columns(len(hourly))
+    for col, h in zip(cols, hourly):
+        rc = "#60a5fa" if h["rain_prob"]>50 else "#64748b"
+        with col:
             st.markdown(f"""
             <div class="forecast-card">
                 <div class="forecast-day">{h["time"]}</div>
-                <div class="forecast-icon">{icon}</div>
+                <div class="forecast-icon">{wx_icon(h["condition"])}</div>
                 <div class="forecast-temp forecast-high">{h["temp"]:.0f}°</div>
-                <div style="font-size:0.72rem;color:{rain_c};margin-top:0.3rem">🌧 {h["rain_prob"]:.0f}%</div>
-                <div style="font-size:0.72rem;color:var(--muted)">💧{h["humidity"]:.0f}%</div>
-            </div>
-            """, unsafe_allow_html=True)
+                <div style="font-size:.72rem;color:{rc};margin-top:.3rem">🌧 {h["rain_prob"]:.0f}%</div>
+                <div style="font-size:.72rem;color:var(--muted)">💧{h["humidity"]:.0f}%</div>
+            </div>""", unsafe_allow_html=True)
 
-def render_5day_forecast(forecast_data, unit_sym):
-    if not forecast_data:
-        return
-    st.markdown('<div class="section-title">📅 5-Day Forecast</div>', unsafe_allow_html=True)
-
+def render_5day(fcast, usym):
+    if not fcast: return
+    section("📅 5-Day Forecast")
     days = {}
-    for item in forecast_data.get("list", []):
-        dt  = datetime.fromtimestamp(item["dt"])
-        day = dt.strftime("%A")
-        if day not in days:
-            days[day] = {"highs": [], "lows": [], "conditions": [], "rain": []}
-        days[day]["highs"].append(item["main"]["temp_max"])
-        days[day]["lows"].append(item["main"]["temp_min"])
-        days[day]["conditions"].append(item["weather"][0]["main"])
-        days[day]["rain"].append(item.get("pop", 0) * 100)
-
-    day_items = list(days.items())[:5]
-    cols = st.columns(len(day_items))
-    for i, (day, vals) in enumerate(day_items):
-        hi   = max(vals["highs"])
-        lo   = min(vals["lows"])
-        cond = max(set(vals["conditions"]), key=vals["conditions"].count)
-        rain = np.mean(vals["rain"])
-        icon = weather_icon(cond)
-        with cols[i]:
+    for item in fcast.get("list",[]):
+        day = datetime.fromtimestamp(item["dt"]).strftime("%A")
+        if day not in days: days[day] = {"hi":[],"lo":[],"cond":[],"rain":[]}
+        days[day]["hi"].append(item["main"]["temp_max"])
+        days[day]["lo"].append(item["main"]["temp_min"])
+        days[day]["cond"].append(item["weather"][0]["main"])
+        days[day]["rain"].append(item.get("pop",0)*100)
+    items = list(days.items())[:5]
+    cols  = st.columns(len(items))
+    for col,(day,v) in zip(cols,items):
+        cond = max(set(v["cond"]),key=v["cond"].count)
+        with col:
             st.markdown(f"""
             <div class="forecast-card">
                 <div class="forecast-day">{day[:3]}</div>
-                <div class="forecast-icon">{icon}</div>
+                <div class="forecast-icon">{wx_icon(cond)}</div>
                 <div class="forecast-temp">
-                    <span class="forecast-high">{hi:.0f}°</span>
+                    <span class="forecast-high">{max(v["hi"]):.0f}°</span>
                     <span style="color:var(--muted)"> / </span>
-                    <span class="forecast-low">{lo:.0f}°</span>
+                    <span class="forecast-low">{min(v["lo"]):.0f}°</span>
                 </div>
-                <div style="font-size:0.72rem;color:var(--rain);margin-top:0.3rem">🌧 {rain:.0f}%</div>
-                <div style="font-size:0.7rem;color:var(--muted)">{cond}</div>
-            </div>
-            """, unsafe_allow_html=True)
+                <div style="font-size:.72rem;color:#60a5fa;margin-top:.3rem">🌧 {np.mean(v["rain"]):.0f}%</div>
+                <div style="font-size:.7rem;color:var(--muted)">{cond}</div>
+            </div>""", unsafe_allow_html=True)
 
 def render_aqi(aqi_data):
-    if not aqi_data:
-        return
+    if not aqi_data: return
     try:
-        aqi = aqi_data["list"][0]["main"]["aqi"]
+        aqi  = aqi_data["list"][0]["main"]["aqi"]
         comp = aqi_data["list"][0]["components"]
-        st.markdown('<div class="section-title">🌿 Air Quality Index</div>', unsafe_allow_html=True)
-        c1, c2, c3, c4, c5 = st.columns(5)
-        aqi_colors = {1:"#34d399",2:"#fbbf24",3:"#f97316",4:"#ef4444",5:"#8b5cf6"}
-        color = aqi_colors.get(aqi, "#64748b")
-        with c1:
+        section("🌿 Air Quality Index")
+        c0,c1,c2,c3,c4 = st.columns(5)
+        color = AQI_COLORS.get(aqi,"#64748b")
+        with c0:
             st.markdown(f"""
             <div class="metric-card">
                 <div style="font-size:1.5rem">🌍</div>
-                <div style="font-size:1.4rem;font-weight:800;color:{color}">{get_aqi_label(aqi)}</div>
+                <div style="font-size:1.1rem;font-weight:800;color:{color}">{AQI_LABELS.get(aqi,"Unknown")}</div>
                 <div class="metric-label">Overall AQI</div>
             </div>""", unsafe_allow_html=True)
-        labels = [("CO", "co","μg/m³"), ("NO₂","no2","μg/m³"), ("O₃","o3","μg/m³"), ("PM2.5","pm2_5","μg/m³")]
-        for col, (label, key, unit) in zip([c2,c3,c4,c5], labels):
-            val = comp.get(key, "--")
+        for col,(label,key) in zip([c1,c2,c3,c4],[("CO","co"),("NO₂","no2"),("O₃","o3"),("PM2.5","pm2_5")]):
+            val = comp.get(key,"--")
             with col:
                 st.markdown(f"""
                 <div class="metric-card">
                     <div style="font-size:1rem;font-weight:700;color:var(--accent)">{label}</div>
-                    <div style="font-size:1.2rem;font-weight:800;color:var(--text)">{val:.1f if isinstance(val,float) else val}</div>
-                    <div class="metric-unit">{unit}</div>
+                    <div style="font-size:1.2rem;font-weight:800">{val:.1f if isinstance(val,float) else val}</div>
+                    <div class="metric-unit">μg/m³</div>
                 </div>""", unsafe_allow_html=True)
-    except:
-        pass
+    except: pass
 
-def render_sun_info(data):
-    sys = data.get("sys", {})
-    sunrise = datetime.fromtimestamp(sys.get("sunrise", 0)).strftime("%H:%M") if sys.get("sunrise") else "--"
-    sunset  = datetime.fromtimestamp(sys.get("sunset",  0)).strftime("%H:%M") if sys.get("sunset")  else "--"
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown(f"""
-        <div class="metric-card" style="display:flex;align-items:center;gap:1rem;text-align:left">
-            <span style="font-size:2rem">🌅</span>
-            <div>
-                <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Sunrise</div>
-                <div style="font-size:1.6rem;font-weight:800;color:var(--accent2);font-family:'Space Mono',monospace">{sunrise}</div>
-            </div>
-        </div>""", unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"""
-        <div class="metric-card" style="display:flex;align-items:center;gap:1rem;text-align:left">
-            <span style="font-size:2rem">🌇</span>
-            <div>
-                <div style="font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Sunset</div>
-                <div style="font-size:1.6rem;font-weight:800;color:var(--accent2);font-family:'Space Mono',monospace">{sunset}</div>
-            </div>
-        </div>""", unsafe_allow_html=True)
+def render_sun(data):
+    sys = data.get("sys",{})
+    sr  = datetime.fromtimestamp(sys["sunrise"]).strftime("%H:%M") if sys.get("sunrise") else "--"
+    ss  = datetime.fromtimestamp(sys["sunset"]).strftime("%H:%M")  if sys.get("sunset")  else "--"
+    c1,c2 = st.columns(2)
+    for col,icon,label,val in [(c1,"🌅","Sunrise",sr),(c2,"🌇","Sunset",ss)]:
+        with col:
+            st.markdown(f"""
+            <div class="metric-card" style="display:flex;align-items:center;gap:1rem;text-align:left">
+                <span style="font-size:2rem">{icon}</span>
+                <div>
+                    <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px">{label}</div>
+                    <div style="font-size:1.6rem;font-weight:800;color:var(--accent2);font-family:'Space Mono',monospace">{val}</div>
+                </div>
+            </div>""", unsafe_allow_html=True)
 
-# ─── Sidebar ───────────────────────────────────────────────────────────────────
+# ─── Sidebar — only 3 controls ─────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## ⚙️ Settings")
-    st.markdown("---")
-
-    api_key = st.text_input(
-        "🔑 OpenWeatherMap API Key",
-        type="password",
-        placeholder="Paste your API key here",
-        help="Get a free key at openweathermap.org"
-    )
-
-    st.markdown("**📍 Location**")
-    location = st.text_input(
-        "City name or lat,lon",
-        value="Ludhiana",
-        placeholder="e.g. Mumbai  or  28.6,77.2"
-    )
-
-    unit = st.selectbox("🌡️ Temperature Unit", ["Metric (°C)", "Imperial (°F)"])
-    unit_param = "metric" if "Metric" in unit else "imperial"
-    unit_sym   = "C"      if "Metric" in unit else "F"
-
-    refresh_rate = st.selectbox("🔄 Auto-refresh", ["Off", "Every 5 min", "Every 10 min", "Every 30 min"])
-
-    fetch_btn = st.button("🔍 Get Weather", use_container_width=True)
-
-    st.markdown("---")
     st.markdown("""
-    <div style="font-size:0.78rem;color:#475569;line-height:1.7">
-    <b style="color:#38bdf8">How it works:</b><br>
-    1. Real-time data via OpenWeatherMap<br>
-    2. ML model (Random Forest) trained on historical patterns<br>
-    3. Predictions: temperature, rain probability, humidity, and weather condition<br><br>
-    <b style="color:#38bdf8">Get a free API key:</b><br>
-    <a href="https://openweathermap.org/api" target="_blank" style="color:#60a5fa">openweathermap.org/api</a>
-    </div>
-    """, unsafe_allow_html=True)
+    <div style="padding:.5rem 0 1.2rem">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1.4rem">
+            <span style="font-size:1.5rem">📍</span>
+            <span style="font-size:1.2rem;font-weight:800;color:#e2e8f0">Location</span>
+        </div>
+    </div>""", unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.markdown('<div style="font-size:0.72rem;color:#475569;text-align:center">WeatherSense AI · Built with Streamlit + ML</div>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size:.82rem;color:#94a3b8;margin-bottom:.3rem">City name or lat,lon</p>', unsafe_allow_html=True)
+    location = st.text_input("_loc", value="Ludhiana", label_visibility="collapsed",
+                             placeholder="e.g. Mumbai  or  28.6,77.2")
 
-# ─── Main Content ──────────────────────────────────────────────────────────────
-if not api_key:
+    st.markdown('<br>', unsafe_allow_html=True)
+    st.markdown("""<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+        <span style="font-size:1.1rem">🌡️</span>
+        <span style="font-size:.88rem;font-weight:700;color:#e2e8f0">Temperature Unit</span>
+    </div>""", unsafe_allow_html=True)
+    unit = st.selectbox("_unit", ["Metric (°C)", "Imperial (°F)"], label_visibility="collapsed")
+
+    st.markdown('<br>', unsafe_allow_html=True)
+    st.markdown("""<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+        <span style="font-size:1.1rem">🔄</span>
+        <span style="font-size:.88rem;font-weight:700;color:#e2e8f0">Auto-refresh</span>
+    </div>""", unsafe_allow_html=True)
+    refresh = st.selectbox("_refresh", ["Off","Every 5 min","Every 10 min","Every 30 min"],
+                           label_visibility="collapsed")
+
+    st.markdown('<br>', unsafe_allow_html=True)
+    fetch_btn = st.button("🔍  Get Weather")
+
+unit_param = "metric"   if "Metric"   in unit else "imperial"
+unit_sym   = "C"        if "Metric"   in unit else "F"
+
+# ─── Load API key from Streamlit secrets ───────────────────────────────────────
+try:
+    API_KEY = st.secrets["OPENWEATHER_API_KEY"]
+except Exception:
+    st.error("⚠️  API key not found.  Go to **App settings → Secrets** and add:\n\n```\nOPENWEATHER_API_KEY = \"your_key_here\"\n```")
+    st.stop()
+
+# ─── Welcome screen ────────────────────────────────────────────────────────────
+if not fetch_btn:
     st.markdown("""
     <div class="main-header">
         <h1>🌤️ WeatherSense AI</h1>
-        <p>ML-Enhanced Real-Time Weather Prediction</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    c1, c2, c3 = st.columns(3)
-    features_info = [
-        ("🌡️", "Real-Time Data", "Temperature, humidity, wind, pressure, cloud cover, visibility, and air quality from OpenWeatherMap"),
-        ("🤖", "ML Predictions", "Random Forest model trained on historical patterns predicts temperature, rain probability & weather condition"),
-        ("📅", "Multi-Day Forecast", "5-day forecast + 24-hour ML-enhanced hourly prediction with rain probability per hour"),
-    ]
-    for col, (icon, title, desc) in zip([c1,c2,c3], features_info):
+        <p>ML-Enhanced Real-Time Weather Prediction &nbsp;·&nbsp; Enter a city and click Get Weather</p>
+    </div>""", unsafe_allow_html=True)
+    c1,c2,c3 = st.columns(3)
+    for col,(icon,title,desc) in zip([c1,c2,c3],[
+        ("🌡️","Real-Time Data","Temperature, humidity, wind, pressure, cloud cover, visibility & air quality"),
+        ("🤖","ML Predictions","Random Forest predicts temperature, rain probability & weather condition for next 3h"),
+        ("📅","Multi-Day Forecast","5-day forecast + 24-hour ML-enhanced hourly prediction with rain probability"),
+    ]):
         with col:
             st.markdown(f"""
             <div class="weather-card" style="text-align:center;padding:2rem 1.5rem">
                 <div style="font-size:3rem">{icon}</div>
-                <div style="font-size:1.1rem;font-weight:700;margin:0.8rem 0 0.5rem">{title}</div>
-                <div style="color:var(--muted);font-size:0.85rem;line-height:1.6">{desc}</div>
+                <div style="font-size:1.1rem;font-weight:700;margin:.8rem 0 .5rem">{title}</div>
+                <div style="color:var(--muted);font-size:.85rem;line-height:1.6">{desc}</div>
             </div>""", unsafe_allow_html=True)
+    st.stop()
 
-    st.info("👈 Enter your **OpenWeatherMap API key** and **city name** in the sidebar, then click **Get Weather** to start.")
+# ─── Main fetch + render ───────────────────────────────────────────────────────
+with st.spinner("🌐 Fetching weather data…"):
+    cur_data, err_c = fetch_current(location, API_KEY, unit_param)
+    fca_data, _     = fetch_forecast(location, API_KEY, unit_param)
 
-elif fetch_btn or (location and api_key):
-    with st.spinner("🌐 Fetching weather data..."):
-        current_data, err_c = fetch_current_weather(location, api_key, unit_param)
-        forecast_data, err_f = fetch_forecast(location, api_key, unit_param)
+if err_c or not cur_data:
+    st.error(f"❌ {err_c or 'Could not fetch data.'} — check the city name and try again.")
+    st.stop()
 
-    if err_c:
-        st.error(f"❌ Error fetching weather: **{err_c}**\n\nCheck your API key and city name.")
-    elif current_data:
-        city_name = current_data.get("name", location)
-        country   = current_data.get("sys", {}).get("country", "")
-        lat  = current_data["coord"]["lat"]
-        lon  = current_data["coord"]["lon"]
+city    = cur_data.get("name", location)
+country = cur_data.get("sys",{}).get("country","")
+lat     = cur_data["coord"]["lat"]
+lon     = cur_data["coord"]["lon"]
 
-        render_header(city_name, country)
+# Header
+st.markdown(f"""
+<div class="main-header">
+    <h1>🌤️ WeatherSense AI</h1>
+    <p>📍 {city}, {country} &nbsp;·&nbsp; ML-Enhanced Forecast &nbsp;·&nbsp; {datetime.now().strftime("%A, %d %B %Y  %H:%M")}</p>
+</div>""", unsafe_allow_html=True)
 
-        # ── Current Conditions ──
-        st.markdown('<div class="section-title">🌍 Current Conditions</div>', unsafe_allow_html=True)
-        render_current_metrics(current_data, unit_sym)
+section("🌍 Current Conditions")
+render_current(cur_data, unit_sym)
 
-        st.markdown("---")
+st.markdown("---")
 
-        # ── ML Predictions ──
-        with st.spinner("🤖 Running ML model..."):
-            preds = make_predictions(current_data, forecast_data)
+with st.spinner("🤖 Running ML model…"):
+    preds = predict(cur_data, fca_data)
 
-        render_ml_predictions(preds, unit_sym)
+render_ml(preds, unit_sym)
+st.markdown("---")
+render_hourly(preds["hourly"])
+st.markdown("---")
+render_5day(fca_data, unit_sym)
+st.markdown("---")
 
-        st.markdown("---")
+col_sun, col_aqi = st.columns([1,2])
+with col_sun:
+    section("☀️ Sun Times")
+    render_sun(cur_data)
+with col_aqi:
+    aqi_data = fetch_aqi(lat, lon, API_KEY)
+    if aqi_data:
+        render_aqi(aqi_data)
 
-        # ── Hourly ML Forecast ──
-        render_hourly_forecast(preds, unit_sym)
+with st.expander("📊 Raw API Response"):
+    t1, t2 = st.tabs(["Current", "Forecast"])
+    with t1: st.json(cur_data)
+    with t2:
+        if fca_data: st.json(fca_data.get("list",[])[:3])
 
-        st.markdown("---")
-
-        # ── 5-Day Forecast ──
-        render_5day_forecast(forecast_data, unit_sym)
-
-        st.markdown("---")
-
-        # ── Sun + AQI ──
-        col_sun, col_aqi = st.columns([1, 2])
-        with col_sun:
-            st.markdown('<div class="section-title">☀️ Sun Times</div>', unsafe_allow_html=True)
-            render_sun_info(current_data)
-
-        with col_aqi:
-            aqi_data = fetch_air_quality(lat, lon, api_key)
-            if aqi_data:
-                render_aqi(aqi_data)
-
-        # ── Raw Data Expander ──
-        with st.expander("📊 Raw API Data"):
-            tab1, tab2 = st.tabs(["Current Weather", "Forecast Data"])
-            with tab1:
-                st.json(current_data)
-            with tab2:
-                if forecast_data:
-                    st.json(forecast_data.get("list", [])[:3])
-
-        # ── Auto-refresh ──
-        refresh_map = {"Every 5 min": 300, "Every 10 min": 600, "Every 30 min": 1800}
-        if refresh_rate in refresh_map:
-            st.markdown(f'<div style="color:var(--muted);font-size:0.78rem;text-align:center">🔄 Auto-refreshing {refresh_rate.lower()}</div>', unsafe_allow_html=True)
-            time.sleep(refresh_map[refresh_rate])
-            st.rerun()
+# Auto-refresh
+refresh_secs = {"Every 5 min":300,"Every 10 min":600,"Every 30 min":1800}
+if refresh in refresh_secs:
+    import time
+    time.sleep(refresh_secs[refresh])
+    st.rerun()
